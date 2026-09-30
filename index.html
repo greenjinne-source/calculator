@@ -134,11 +134,11 @@ const MPS={
 const offerId=u=>((String(u||'').match(/offer\/(\d+)/)||[])[1]);
 // Столбцы: [ключ, заголовок, тип, css, включён по умолчанию, основной]
 const COLS=[
- ['n','Товар','in','t',1,1],['url','Ссылка 1688','in','l',1,1],['cny','Закупка, ¥','in','n',1,1],['g','Вес, г','in','n',1,1],
+ ['n','Товар','in','t',1,1],['url','Ссылка 1688','in','l',1,1],['cny','Закупка, ¥','in','n',1,1],['buy','Закупка, ₽','calc','',1,1],['g','Вес, г','in','n',1,1],
  ['comm','Комиссия Ozon, % (пусто=общая)','in','n',1,0],['comp','Конкуренты Ozon, ₽','in','n',1,1],['compUrl','Ссылка на конкурента Ozon','in','l',1,1],
  ['q','Запрос MPStats','in','l',1,0],['frq','Частота запроса Ozon','in','n',1,0],['ord','Заказов/мес по запросу, шт','in','n',1,1],['rev','Заказов/мес по запросу, ₽','in','l',0,0],['act','Товаров с заказами','in','n',1,1],['med','Медианная цена запроса, ₽','in','n',1,1],
  ['own','Своя цена, ₽ (необяз.)','in','n',1,0],['note','Заметка','in','t',1,0],
- ['buy','Закупка, ₽','calc','',1,1],['pre','Себестоим. до Ozon, ₽','calc','',1,0],['be','Точка безубытка, ₽','calc','',1,0],
+ ['pre','Себестоим. до Ozon, ₽','calc','',1,0],['be','Точка безубытка, ₽','calc','',1,0],
  ['rec','Рекоменд. цена, ₽','calc','',1,1],['ozFee','Комиссия Ozon, ₽','calc','',1,0],['taxv','Налог, ₽','calc','',1,0],
  ['vsMed','Рекоменд. цена к медиане, %','calc','',1,0],['profit','Прибыль, ₽/шт','calc','',1,1],['margin','Маржа, %','calc','',1,1],['roi','ROI, %','calc','',1,0],['perSku','Заказов/мес на 1 активный товар','calc','',1,1],['month','Прибыль/мес при средней доле, ₽','calc','',1,1]
 ];
@@ -209,8 +209,8 @@ function renderCols(){
  const el=document.getElementById('colsel');el.innerHTML='';
  const grp=(t)=>{const d=document.createElement('div');d.className='grp';d.textContent=t;el.appendChild(d)};
  grp('Вводимые данные');
- COLS.forEach((c,i)=>{
-  if(c[2]==='calc'&&COLS[i-1][2]==='in')grp('Расчётные значения');
+ [...COLS.filter(c=>c[2]==='in'),'sep',...COLS.filter(c=>c[2]==='calc')].forEach(c=>{
+  if(c==='sep'){grp('Расчётные значения');return}
   const l=document.createElement('label');const cb=document.createElement('input');cb.type='checkbox';cb.checked=V[c[0]];
   cb.onchange=()=>{V[c[0]]=cb.checked;save();renderT()};
   l.title='Показать/скрыть столбец: '+C_HINT[c[0]];cb.title=l.title;l.appendChild(cb);l.append(c[1]);el.appendChild(l);
