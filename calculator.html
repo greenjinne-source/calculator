@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Калькулятор Ozon</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1d2330;--mut:#6b7385;--bd:#dde1e8;--ac:#005bff;--ok:#0a8f4e;--bad:#c62828;--mps:#e2f3e7;--mpsh:#c6e6d2;--mpsok:#0a6b3a}
+@media (prefers-color-scheme:dark){:root{--bg:#14171d;--card:#1d222b;--tx:#e8ebf1;--mut:#9aa3b5;--bd:#2d3441;--ac:#5b92ff;--ok:#3ecf84;--bad:#ff6b6b;--mps:#1d3a2a;--mpsh:#2a5038;--mpsok:#6ee7a0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,Segoe UI,Arial,sans-serif;padding:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:0 0 10px}
+.sub{color:var(--mut);margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px}
+input{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px;width:100%}
+input:focus{outline:2px solid var(--ac);border-color:transparent}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid var(--bd);padding:4px 6px;text-align:left;vertical-align:middle;white-space:nowrap}
+th{font-size:11px;color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--card)}
+td input{padding:4px 6px}
+td input.n{width:78px}td input.t{width:230px}td input.l{width:150px}
+.st{position:sticky;background:var(--card);z-index:2;border-right:1px solid var(--bd)}
+th.st{z-index:3}
+td.st input{width:100%}
+td.st .lk input{min-width:0;flex:1}
+.lk{display:flex;align-items:center;gap:4px}
+.lk a{text-decoration:none;font-size:15px}
+.calc{background:rgba(0,91,255,.07);font-variant-numeric:tabular-nums}
+.mps{background:var(--mps)!important}
+th.mps{background:var(--mpsh)!important}
+td.mps input{background:transparent}
+.mps.ok{color:var(--mpsok)}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+button{font:inherit;background:var(--ac);color:#fff;border:0;border-radius:6px;padding:7px 12px;cursor:pointer}
+button.g{background:transparent;color:var(--ac);border:1px solid var(--bd)}
+.x{background:transparent;color:var(--bad);padding:2px 8px;border:0;font-size:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.addlink{display:flex;gap:8px;margin-bottom:12px}
+.addlink input{flex:1;min-width:200px}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:6px 16px}
+.cols label{flex-direction:row;align-items:center;gap:8px;font-size:13px;color:var(--tx);line-height:1.3}
+.cols input{flex:none;margin:0}
+.cols input{width:auto}
+.cols .grp{grid-column:1/-1;font-size:11px;color:var(--mut);margin-top:4px}
+#msg{display:none;position:sticky;top:8px;z-index:5;background:var(--card);border:1px solid var(--ac);border-radius:8px;padding:8px 12px;margin-bottom:12px;gap:8px;align-items:center;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+#msg.show{display:flex}
+.note{color:var(--mut);font-size:12px;margin-top:8px}
+a{color:var(--ac)}
+</style>
+</head>
+<body>
+<h1>Калькулятор цены и прибыли для Ozon (FBO/FBS)</h1>
+<div id="msg" role="status"></div>
+<div class="sub">Меняйте любые числа — всё пересчитывается сразу и сохраняется в браузере. Голубые ячейки — расчёт.</div>
+
+<div class="card">
+<h2>Общие параметры</h2>
+<div class="grid" id="globals"></div>
+<div class="note">Формула: цена = (постоянные расходы на 1 шт + желаемая прибыль) ÷ (1 − сумма % от цены). К % от цены относятся комиссия Ozon, эквайринг, налог с выручки, реклама, резерв на возвраты. Постоянные расходы: закупка, доставка из Китая, упаковка, фулфилмент, логистика Ozon.</div>
+</div>
+
+<div class="card">
+<h2>Столбцы таблицы</h2>
+<div class="cols" id="colsel"></div>
+<div class="row"><button class="g" id="colall" title="Показать в таблице все столбцы">Включить все</button><button class="g" id="colmin" title="Оставить только ключевые столбцы: товар, ссылки, закупка, рекомендованная цена, прибыль, маржа">Только основные</button></div>
+</div>
+
+<div class="card">
+<h2>Товары</h2>
+<div class="addlink">
+<input id="newlink" title="Вставьте ссылку вида https://detail.1688.com/offer/123456789.html — строка товара создастся автоматически" placeholder="Вставьте ссылку на товар 1688 (или Ozon) и нажмите «Добавить по ссылке»">
+<button id="addlink" title="Создать строку товара из вставленной ссылки 1688 или Ozon">Добавить по ссылке</button>
+</div>
+<div class="tw"><table id="tbl"></table></div>
+<div class="row">
+<button id="add" title="Добавить пустую строку товара для ручного ввода">+ Пустая строка</button>
+<button class="g" id="csv" title="Скачать таблицу (только видимые столбцы) в CSV для Excel">Скачать CSV</button>
+<button class="g" id="reset" title="Удалить все ваши изменения и вернуть исходные 8 товаров, параметры и столбцы">Сбросить к исходным данным</button>
+</div>
+<div class="note">Зелёные столбцы — данные MPStats (спрос по поисковому запросу) и расчёты на их основе. Ссылка 1688 приводится к виду detail.1688.com/offer/ID.html; ссылка Ozon попадает в столбец конкурента. Цену и вес с 1688 страница калькулятора подтянуть сама не может (защита сайта) — впишите ¥ и граммы вручную. «Своя цена» — если заполнена, прибыль считается по ней; если пусто — по рекомендованной. Рекомендованная цена = максимум из цены для минимальной прибыли в ₽ и цены для целевой маржи %, округлённая вверх до …9.</div>
+</div>
+
+<script>
+const G_DEF={rate:11.5,agent:0,perkg:200,pack:3,ff:10,ozlog:35,comm:15,acq:1.5,tax:6,ads:5,ret:3,minProfit:10,margin:20};
+const G_LBL={rate:['Курс ₽ за 1 ¥',0.1],agent:['Комиссия посредника/байера, % от закупки',0.5],perkg:['Доставка Китай→РФ, ₽/кг',5],pack:['Упаковка/этикетка на 1 шт, ₽',0.5],ff:['Фулфилмент на 1 шт, ₽',1],ozlog:['Логистика Ozon на 1 шт (средн.), ₽',1],comm:['Комиссия Ozon по умолч., %',0.5],acq:['Эквайринг, % от цены',0.1],tax:['Налог, % от выручки',0.5],ads:['Реклама/продвижение, % от цены',0.5],ret:['Резерв на возвраты/брак, % от цены',0.5],minProfit:['Мин. прибыль с 1 шт, ₽',1],margin:['Целевая маржа, % от цены',1]};
+const P_DEF=[
+{n:'Автомобильный противоскользящий коврик на торпедо (силикон), 70 г',url:'https://detail.1688.com/offer/641164533970.html',cny:0.84,g:70,comm:'',own:'',comp:'187–230',compUrl:'https://www.ozon.ru/product/709682390/',note:'1 место: спрос подтверждён (5,3 тыс. отзывов), есть запас по цене'},
+{n:'Магнитный подхват для штор с жемчугом (шнур+магнит), ~30 г (оценка)',url:'https://detail.1688.com/offer/773611546250.html',cny:1.15,g:30,comm:'',own:'',comp:'172–413 (наборы по 2 шт.)',compUrl:'https://www.ozon.ru/product/2835206890/',note:'2 место: лидеры 4–14 тыс. отзывов; уточнить у поставщика вес/упаковку'},
+{n:'Подхват для штор мультяшный «Мишка/Грибочек» (исходный товар), 41 г',url:'https://detail.1688.com/offer/1035266877729.html',cny:6,g:41,comm:'',own:'',comp:'267–439',compUrl:'https://www.ozon.ru/product/4737729207/',note:'3 место: у конкурентов мало отзывов — ниша, но спрос не доказан; закупка дорогая'},
+{n:'Телескопическая металлическая ложка для обуви, 200 г',url:'https://detail.1688.com/offer/733338731336.html',cny:2.8,g:200,comm:'',own:'',comp:'223–560',compUrl:'https://www.ozon.ru/product/2782722107/',note:'4 место: стабильный спрос, лидер 36 тыс. отзывов; вес даёт дорогую доставку'},
+{n:'Магниты на холодильник «мини-хлеб/выпечка» набор, ~60 г (оценка)',url:'https://detail.1688.com/offer/899028457638.html',cny:2.5,g:60,comm:'',own:'',comp:'145–918',compUrl:'https://www.ozon.ru/product/3048932637/',note:'5 место: мало конкурентов и отзывов; проверить, что это не игрушка (состав набора/возраст)'},
+{n:'Силиконовый стопор для двери, ~60 г (оценка)',url:'https://detail.1688.com/offer/721848724775.html',cny:0.59,g:60,comm:'',own:'',comp:'135–333 (наборы по 6 шт.)',compUrl:'https://www.ozon.ru/product/4686742350/',note:'6 место: лидер 135 ₽ и 98 тыс. отзывов — рекоменд. цена на уровне лидера'},
+{n:'Самоклеящиеся держатели для проводов (набор), ~80 г (оценка)',url:'https://detail.1688.com/offer/834195776184.html',cny:0.19,g:80,comm:'',own:'',comp:'62–279 (наборы 20–40 шт.)',compUrl:'https://www.ozon.ru/product/881901536/',note:'7 место: перенасыщено, лидер 99 ₽ и 54 тыс. отзывов'},
+{n:'Самоклеящиеся прозрачные крючки, ~30 г (оценка)',url:'https://detail.1688.com/offer/1033915421367.html',cny:0.14,g:30,comm:'',own:'',comp:'78–137 (наборы по 10–12 шт.)',compUrl:'https://www.ozon.ru/product/2035123501/',note:'8 место: демпинг, лидеры 78–95 ₽ и 100–490 тыс. отзывов'}
+];
+// Данные MPStats (Ozon, «Товары в поиске», топ-100 выдачи по запросу, период 30 дней, снято 30.09.2026)
+const MPS={
+'641164533970':{q:'коврик на панель автомобиля противоскользящий',frq:617,ord:9468,rev:2195674,act:93,med:256},
+'773611546250':{q:'подхват для штор',frq:1135,ord:21486,rev:6095759,act:167,med:285},
+'1035266877729':{q:'держатель для штор',frq:2718,ord:28002,rev:8662965,act:172,med:270},
+'733338731336':{q:'ложка для обуви',frq:16395,ord:26852,rev:7863686,act:168,med:226},
+'899028457638':{q:'магнит на холодильник',frq:3732,ord:6316,rev:2937222,act:95,med:225},
+'721848724775':{q:'стопор для двери',frq:2258,ord:20244,rev:4825025,act:132,med:248},
+'834195776184':{q:'держатель для проводов',frq:4643,ord:41675,rev:9962215,act:183,med:170},
+'1033915421367':{q:'крючки самоклеящиеся',frq:610,ord:33834,rev:7359264,act:150,med:194}
+};
+const offerId=u=>((String(u||'').match(/offer\/(\d+)/)||[])[1]);
+// Столбцы: [ключ, заголовок, тип, css, включён по умолчанию, основной]
+const COLS=[
+ ['n','Товар','in','t',1,1],['url','Ссылка 1688','in','l',1,1],['cny','Закупка, ¥','in','n',1,1],['g','Вес, г','in','n',1,1],
+ ['comm','Комиссия Ozon, % (пусто=общая)','in','n',1,0],['comp','Конкуренты Ozon, ₽','in','n',1,1],['compUrl','Ссылка на конкурента Ozon','in','l',1,1],
+ ['q','Запрос MPStats','in','l',1,0],['frq','Частота запроса Ozon','in','n',1,0],['ord','Заказов/мес по запросу, шт','in','n',1,1],['rev','Заказов/мес по запросу, ₽','in','l',0,0],['act','Товаров с заказами','in','n',1,1],['med','Медианная цена запроса, ₽','in','n',1,1],
+ ['own','Своя цена, ₽ (необяз.)','in','n',1,0],['note','Заметка','in','t',1,0],
+ ['buy','Закупка, ₽','calc','',1,1],['pre','Себестоим. до Ozon, ₽','calc','',1,0],['be','Точка безубытка, ₽','calc','',1,0],
+ ['rec','Рекоменд. цена, ₽','calc','',1,1],['ozFee','Комиссия Ozon, ₽','calc','',1,0],['taxv','Налог, ₽','calc','',1,0],
+ ['vsMed','Рекоменд. цена к медиане, %','calc','',1,0],['profit','Прибыль, ₽/шт','calc','',1,1],['margin','Маржа, %','calc','',1,1],['roi','ROI, %','calc','',1,0],['perSku','Заказов/мес на 1 активный товар','calc','',1,1],['month','Прибыль/мес при средней доле, ₽','calc','',1,1]
+];
+const G_HINT={rate:'Сколько рублей стоит 1 юань. Закупка в ₽ = ¥ × курс.',agent:'Процент от стоимости закупки, который берёт байер/посредник. 0 — если закупаете напрямую.',perkg:'Стоимость доставки из Китая в РФ за 1 кг. Доставка на 1 шт = вес(г)/1000 × эта цена.',pack:'Пакет, этикетка, коробка — расход на 1 штуку, ₽.',ff:'Ваша плата за фулфилмент на 1 штуку, ₽ (по умолчанию 10).',ozlog:'Средняя стоимость логистики Ozon на 1 шт (зависит от объёма и схемы). Возьмите из калькулятора Ozon в кабинете.',comm:'Комиссия Ozon по категории, % от цены. Используется, если в строке товара своя не указана.',acq:'Плата за приём платежа, % от цены продажи.',tax:'Налог, % от суммы продажи (у вас 6%).',ads:'Расход на продвижение/рекламу, % от цены продажи.',ret:'Запас на возвраты и брак, % от цены продажи.',minProfit:'Минимальная прибыль с одной штуки, ₽. Цена не будет ниже той, что даёт эту прибыль.',margin:'Желаемая прибыль в % от цены продажи. Цена считается так, чтобы получить не меньше этой маржи.'};
+const C_HINT={n:'Название товара (для себя).',url:'Ссылка на товар на 1688. Кнопка ↗ откроет её в новой вкладке.',cny:'Цена закупки за 1 штуку в юанях (¥) с 1688.',g:'Вес 1 штуки в граммах (вместе с упаковкой). Влияет на доставку из Китая.',comm:'Комиссия Ozon для этого товара, %. Оставьте пустым — возьмётся общая из параметров.',comp:'Диапазон цен конкурентов на Ozon (для сравнения с рекомендованной ценой).',compUrl:'Ссылка на главного конкурента на Ozon. Кнопка ↗ откроет её.',q:'Поисковый запрос Ozon, по которому взяты данные в MPStats («Товары в поиске»).',frq:'Частота запроса на Ozon за период (MPStats).',ord:'Сколько штук заказано за 30 дней по всем товарам из топ-100 выдачи этого запроса (MPStats).',rev:'Сумма заказов за 30 дней по товарам из топ-100 выдачи запроса, ₽ (MPStats).',act:'Сколько товаров из выдачи запроса реально получили заказы за период (остальные не продаются).',med:'Медианная цена товаров в выдаче запроса, ₽. Рекомендованную цену имеет смысл держать около неё или ниже.',vsMed:'На сколько процентов рекомендованная цена выше (+) или ниже (−) медианной цены запроса. Зелёный — не выше медианы. Учтите, что в выдаче бывают наборы разного размера.',perSku:'Заказы по запросу ÷ товары с заказами: средний месячный объём одного работающего товара. Новичок обычно продаёт меньше среднего.',month:'Грубая оценка: прибыль с 1 шт × средние заказы на 1 активный товар. Это потолок при средней доле, а не прогноз.',own:'Ваша планируемая цена. Если заполнена — прибыль и маржа считаются по ней, иначе по рекомендованной.',note:'Любые заметки.',buy:'Закупка в рублях = ¥ × курс × (1 + комиссия посредника).',pre:'Закупка + доставка из Китая (без упаковки, фулфилмента и затрат Ozon).',be:'Цена, при которой прибыль = 0: все расходы покрыты, заработка нет.',rec:'Рекомендованная цена: обеспечивает и минимальную прибыль в ₽, и целевую маржу. Округлена вверх до …9.',ozFee:'Комиссия Ozon в рублях при расчётной цене.',taxv:'Налог в рублях с одной продажи при расчётной цене.',profit:'Чистая прибыль с 1 шт после всех расходов. Зелёная — не ниже минимума, красная — ниже.',margin:'Прибыль, делённая на цену продажи, %.',roi:'Окупаемость: прибыль ÷ (закупка + доставка из Китая), %.'};
+let G,P,V,lastDel=null;
+try{
+ G=Object.assign({},G_DEF,JSON.parse(localStorage.getItem('oz_g')||'{}'));
+ P=JSON.parse(localStorage.getItem('oz_p2')||'null')||P_DEF.map(x=>({...x}));
+ V=JSON.parse(localStorage.getItem('oz_v')||'null');
+}catch(e){G={...G_DEF};P=P_DEF.map(x=>({...x}));V=null}
+P_DEF.forEach(p=>Object.assign(p,MPS[offerId(p.url)]||{}));
+P.forEach(p=>{const m=MPS[offerId(p.url)];if(m&&p.q===undefined)Object.assign(p,m)});
+if(!V)V={};
+COLS.forEach(c=>{if(V[c[0]]===undefined)V[c[0]]=!!c[4]});
+const save=()=>{try{localStorage.setItem('oz_g',JSON.stringify(G));localStorage.setItem('oz_p2',JSON.stringify(P));localStorage.setItem('oz_v',JSON.stringify(V))}catch(e){}};
+const f=(x,d=2)=>isFinite(x)?x.toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+const num=v=>parseFloat(String(v).replace(',','.'))||0;
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const safeUrl=u=>/^https?:\/\//i.test(u)?u:'';
+
+function calc(p){
+ const comm=(p.comm===''||p.comm==null?G.comm:num(p.comm));
+ const buy=num(p.cny)*G.rate*(1+G.agent/100);
+ const ship=num(p.g)/1000*G.perkg;
+ const fixed=buy+ship+G.pack+G.ff+G.ozlog;
+ const pct=(comm+G.acq+G.tax+G.ads+G.ret)/100;
+ const pr1=pct<1?(fixed+G.minProfit)/(1-pct):NaN;
+ const pr2=(pct+G.margin/100)<1?fixed/(1-pct-G.margin/100):NaN;
+ let rec=Math.max(pr1,pr2);rec=Math.ceil((rec+1)/10)*10-1;
+ const price=p.own!==''&&num(p.own)>0?num(p.own):rec;
+ const profit=price*(1-pct)-fixed;
+ const perSku0=num(p.act)>0?num(p.ord)/num(p.act):NaN;
+ return{month:profit*perSku0,comm,buy,ship,fixed,pct,rec,price,profit,margin:profit/price*100,roi:profit/(buy+ship)*100,
+  perSku:num(p.act)>0?num(p.ord)/num(p.act):NaN,vsMed:num(p.med)>0?(rec/num(p.med)-1)*100:NaN,ozFee:price*comm/100,taxv:price*G.tax/100,be:fixed/(1-pct),pre:buy+ship};
+}
+function calcCell(k,c){
+ return calcCell0(k,c).replace('<td class="calc','<td title="'+esc(C_HINT[k])+'" class="calc');
+}
+function calcCell0(k,c){
+ switch(k){
+  case'buy':return`<td class="calc">${f(c.buy)}</td>`;
+  case'pre':return`<td class="calc">${f(c.pre)}</td>`;
+  case'be':return`<td class="calc">${f(c.be,0)}</td>`;
+  case'rec':return`<td class="calc"><b>${f(c.rec,0)}</b></td>`;
+  case'ozFee':return`<td class="calc">${f(c.ozFee)}</td>`;
+  case'taxv':return`<td class="calc">${f(c.taxv)}</td>`;
+  case'profit':return`<td class="calc ${c.profit>=G.minProfit?'ok':'bad'}">${f(c.profit)}</td>`;
+  case'vsMed':return`<td class="calc ${c.vsMed<=0?'ok':''}">${isFinite(c.vsMed)?(c.vsMed>0?'+':'')+f(c.vsMed,0):'—'}</td>`;
+  case'perSku':return`<td class="calc">${f(c.perSku,0)}</td>`;
+  case'month':return`<td class="calc ${c.month>0?'ok':''}"><b>${f(c.month,0)}</b></td>`;
+  case'margin':return`<td class="calc">${f(c.margin,1)}</td>`;
+  case'roi':return`<td class="calc">${f(c.roi,0)}</td>`;
+ }
+}
+
+function renderG(){
+ const el=document.getElementById('globals');el.innerHTML='';
+ for(const k in G_LBL){const l=document.createElement('label');l.textContent=G_LBL[k][0];l.title=G_HINT[k];
+  const i=document.createElement('input');i.title=G_HINT[k];i.type='number';i.step=G_LBL[k][1];i.value=G[k];
+  i.oninput=()=>{G[k]=num(i.value);save();renderT()};l.appendChild(i);el.appendChild(l)}
+}
+function renderCols(){
+ const el=document.getElementById('colsel');el.innerHTML='';
+ const grp=(t)=>{const d=document.createElement('div');d.className='grp';d.textContent=t;el.appendChild(d)};
+ grp('Вводимые данные');
+ COLS.forEach((c,i)=>{
+  if(c[2]==='calc'&&COLS[i-1][2]==='in')grp('Расчётные значения');
+  const l=document.createElement('label');const cb=document.createElement('input');cb.type='checkbox';cb.checked=V[c[0]];
+  cb.onchange=()=>{V[c[0]]=cb.checked;save();renderT()};
+  l.title='Показать/скрыть столбец: '+C_HINT[c[0]];cb.title=l.title;l.appendChild(cb);l.append(c[1]);el.appendChild(l);
+ });
+}
+function renderT(){
+ const t=document.getElementById('tbl');
+ const vis=COLS.filter(c=>V[c[0]]);
+ const DW=46;const SW={n:260};let off=DW;const SO={};vis.forEach(c=>{if(SW[c[0]]){SO[c[0]]=off;off+=SW[c[0]]}});
+ const dst=` class="st" style="left:0;min-width:${DW}px;max-width:${DW}px;text-align:center"`;
+ const st=k=>SO[k]!==undefined?` class="st" style="left:${SO[k]}px;min-width:${SW[k]}px;max-width:${SW[k]}px"`:'';
+ let h=`<tr><th${dst} title="Удалить строку: нажмите 🗑 рядом с товаром"></th>`+vis.map(c=>`<th${st(c[0])} title="${esc(C_HINT[c[0]])}">${c[1]}</th>`).join('')+'</tr>';
+ P.forEach((p,i)=>{
+  const c=calc(p);
+  h+=`<tr><td${dst}><button class="x" data-del="${i}" title="Удалить эту строку (можно отменить)">🗑</button></td>`+vis.map(([k,,ty,cl])=>{
+   if(ty==='calc')return calcCell(k,c);
+   const inp=`<input title="${esc(C_HINT[k])}" class="${cl}" data-i="${i}" data-k="${k}" value="${esc(p[k])}">`;
+   if(k==='url'||k==='compUrl'){const u=safeUrl(p[k]);return`<td${st(k)}><div class="lk">${inp}${u?`<a href="${esc(u)}" target="_blank" rel="noopener" title="Открыть ссылку в новой вкладке">↗</a>`:''}</div></td>`}
+   return`<td${st(k)}>${inp}</td>`;
+  }).join('')+'</tr>';
+ });
+ t.innerHTML=h;
+ const MK=new Set(['q','frq','ord','rev','act','med','vsMed','perSku','month']);
+ vis.forEach((c,idx)=>{if(MK.has(c[0]))t.querySelectorAll('tr').forEach(r=>r.children[idx+1]&&r.children[idx+1].classList.add('mps'))});
+ t.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{P[inp.dataset.i][inp.dataset.k]=inp.value;save();renderT()});
+ t.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;lastDel={row:P[i],i};P.splice(i,1);save();renderT();msg('Строка «'+(lastDel.row.n||'без названия').slice(0,50)+'» удалена.',[['Отменить',()=>{P.splice(lastDel.i,0,lastDel.row);save();renderT();msg('Строка восстановлена.')}]])});
+}
+let msgT;
+function msg(text,actions=[]){const m=document.getElementById('msg');m.innerHTML='';const sp=document.createElement('span');sp.textContent=text;m.appendChild(sp);
+ actions.forEach(([t,fn])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>{m.classList.remove('show');fn()};m.appendChild(b)});
+ if(actions.length){const c=document.createElement('button');c.className='g';c.textContent='Закрыть';c.onclick=()=>m.classList.remove('show');m.appendChild(c)}
+ m.classList.add('show');clearTimeout(msgT);msgT=setTimeout(()=>m.classList.remove('show'),actions.length?12000:4000)}
+const blank=()=>({n:'',url:'',cny:0,g:0,comm:'',own:'',comp:'',compUrl:'',note:'',q:'',frq:'',ord:'',rev:'',act:'',med:''});
+document.getElementById('add').onclick=()=>{P.push(blank());save();renderT()};
+document.getElementById('addlink').onclick=()=>{
+ const inp=document.getElementById('newlink');const raw=inp.value.trim();
+ if(!raw){inp.focus();return}
+ const p=blank();
+ const m=raw.match(/offer\/(\d{6,})/)||raw.match(/[?&]offerId=(\d{6,})/);
+ if(m&&/1688\.com|alibaba\.com/i.test(raw)){p.url='https://detail.1688.com/offer/'+m[1]+'.html';p.n='Товар 1688 №'+m[1]}
+ else if(/ozon\.ru/i.test(raw)){const o=raw.match(/-(\d{6,})\/?(\?|$)/)||raw.match(/product\/(\d{6,})/);p.compUrl=o?'https://www.ozon.ru/product/'+o[1]+'/':raw.split('?')[0];p.n='Товар (конкурент Ozon)'}
+ else if(/^https?:\/\//i.test(raw)){p.url=raw;p.n='Товар по ссылке'}
+ else{msg('Нужна ссылка, начинающаяся с http:// или https://');return}
+ if(P.some(x=>p.url&&x.url===p.url)){msg('Этот товар уже есть в таблице.');return}
+ P.push(p);inp.value='';save();renderT();
+ const cells=document.querySelectorAll('#tbl input[data-k="cny"]');if(cells.length)cells[cells.length-1].focus();
+};
+document.getElementById('newlink').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('addlink').click()});
+document.getElementById('colall').onclick=()=>{COLS.forEach(c=>V[c[0]]=true);save();renderCols();renderT()};
+document.getElementById('colmin').onclick=()=>{COLS.forEach(c=>V[c[0]]=!!c[5]);save();renderCols();renderT()};
+document.getElementById('reset').onclick=()=>msg('Вернуть исходные товары, параметры и столбцы? Ваши изменения пропадут.',[['Да, сбросить',()=>{G={...G_DEF};P=P_DEF.map(x=>({...x}));V=Object.fromEntries(COLS.map(c=>[c[0],!!c[4]]));save();renderG();renderCols();renderT();msg('Данные сброшены к исходным.')}]]);
+document.getElementById('csv').onclick=()=>{
+ const vis=COLS.filter(c=>V[c[0]]);
+ const hd=vis.map(c=>c[1]);
+ const rows=P.map(p=>{const c=calc(p);return vis.map(([k,,ty])=>ty==='in'?(p[k]??''):(k==='rec'||k==='be'?Math.round(c[k]):Number(c[k]).toFixed(2)))});
+ const s=[hd,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+s],{type:'text/csv'}));a.download='ozon_products.csv';a.click();
+};
+renderG();renderCols();renderT();
+</script>
+</body>
+</html>
